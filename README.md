@@ -10,7 +10,10 @@ A comprehensive AWS EC2 server monitoring application with authentication, real-
 
 - 🔐 **Secure Authentication** - JWT-based authentication with bcrypt password hashing
 - 🖥️ **AWS EC2 Integration** - Monitor EC2 instances via CloudWatch and SSH
+- 🐳 **Docker Monitoring** - Monitor Docker containers on the host (NEW!)
 - 📊 **Real-time Metrics** - Track CPU, RAM, and disk usage with auto-refresh
+- 🔄 **Background Monitoring** - Continuous monitoring even when logged out
+- 📄 **Public Status Page** - Share server status without authentication
 - 🚨 **Visual Alerts** - Color-coded warnings (yellow) and critical alerts (red)
 - 🎨 **Beautiful UI** - Modern, responsive dashboard with dark theme
 - 🐳 **Docker Ready** - Fully containerized with automated CI/CD
@@ -121,6 +124,19 @@ Provides detailed metrics for CPU, RAM, and disk usage by connecting directly to
 - Disk usage percentage for /
 - Disk space details (total, used, free)
 
+### Docker Container Monitoring (NEW!)
+Monitors Docker containers running on the same host as the monitoring application.
+
+**Requirements:**
+- Docker socket mounted to container: `-v /var/run/docker.sock:/var/run/docker.sock`
+
+**Metrics provided:**
+- Container state (running, exited, restarting, etc.)
+- CPU utilization percentage
+- Memory utilization percentage
+- Memory usage (used/total)
+- Container image and name
+
 ### CloudWatch Monitoring (EC2 Only)
 Uses AWS CloudWatch for basic EC2 metrics when SSH is not available.
 
@@ -135,6 +151,10 @@ Uses AWS CloudWatch for basic EC2 metrics when SSH is not available.
 
 ## API Endpoints
 
+### Public Endpoints (No Authentication)
+- `GET /status` - Public status page
+- `GET /api/status/public` - Public API for status data
+
 ### Authentication
 - `POST /api/auth/login` - Login with username/password
 - `POST /api/auth/logout` - Logout current user
@@ -147,10 +167,10 @@ Uses AWS CloudWatch for basic EC2 metrics when SSH is not available.
 - `DELETE /api/servers/:id` - Delete server
 
 ### Monitoring
-- `GET /api/monitor/all` - Get metrics for all servers
-- `GET /api/monitor/:id` - Get metrics for specific server
+- `GET /api/monitor/all` - Get cached metrics for all servers and Docker containers
+- `GET /api/monitor/:id` - Get cached metrics for specific server
 
-All API endpoints (except login) require authentication via JWT token.
+All API endpoints (except login and public status) require authentication via JWT token.
 
 ## Data Persistence
 

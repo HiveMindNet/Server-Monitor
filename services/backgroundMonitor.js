@@ -2,12 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const { getServers } = require('../config/servers');
 const { monitorServer } = require('./awsMonitor');
+const { monitorDockerContainers } = require('./dockerMonitor');
 
 const CACHE_FILE = path.join(__dirname, '../data/metrics-cache.json');
 const MONITOR_INTERVAL = parseInt(process.env.MONITOR_INTERVAL || '30000'); // 30 seconds
 
 let monitoringInterval = null;
-let latestMetrics = { servers: [], lastUpdate: null };
+let latestMetrics = { servers: [], containers: [], lastUpdate: null };
 
 // Load cached metrics on startup
 function loadCache() {
@@ -39,25 +40,30 @@ async function runMonitoring() {
   try {
     const servers = getServers();
     
-    if (servers.length === 0) {
-      console.log('No servers configured for monitoring');
-      latestMetrics = { servers: [], lastUpdate: new Date().toISOString() };
-      saveCache();
-      return;
-    }
-    
-    // Monitor all servers in parallel
-    const results = await Promise.all(
-      servers.map(server => monitorServer(server).catch(err => ({
-        id: server.id,
-        name: server.name,
-        status: 'error',
-        error: err.message
-      })))
-    );
+    // Monitor servers and Docker containers in parallel
+    const [serverResults, containerResults] = await Promise.all([
+      // Monitor servers
+      servers.length > 0 
+        ? Promise.all(
+            servers.map(server => monitorServer(server).catch(err => ({
+              id: server.id,
+              name: server.name,
+              status: 'error',
+              error: err.message
+            })))
+          )
+        : Promise.resolve([]),
+      
+      // Monitor Docker containers
+      monitorDockerContainers().catch(err => {
+        console.error('Error monitoring Docker:', err.message);
+        return [];
+      })
+    ]);
     
     latestMetrics = {
-      servers: results,
+      servers: serverResults,
+      containers: containerResults,
       lastUpdate: new Date().toISOString()
     };
     
@@ -65,9 +71,10 @@ async function runMonitoring() {
     saveCache();
     
     const duration = Date.now() - startTime;
-    const issueCount = results.filter(s => s.status === 'error' || s.status === 'unreachable').length;
+    const serverIssues = serverResults.filter(s => s.status === 'error' || s.status === 'unreachable').length;
+    const containerIssues = containerResults.filter(c => c.state !== 'running').length;
     
-    console.log(`[${new Date().toISOString()}] Monitoring complete: ${results.length} servers checked in ${duration}ms (${issueCount} issues)`);
+    console.log(`[${new Date().toISOString()}] Monitoring complete: ${serverResults.length} servers, ${containerResults.length} containers in ${duration}ms (${serverIssues} server issues, ${containerIssues} container issues)`);
   } catch (error) {
     console.error('Error in background monitoring:', error);
   }

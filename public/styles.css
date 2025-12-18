@@ -292,6 +292,42 @@ body {
     opacity: 1;
 }
 
+/* Docker Containers */
+.containers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.container-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: transform 0.2s;
+}
+
+.container-item:hover {
+    transform: translateX(3px);
+}
+
+.container-info {
+    flex: 1;
+}
+
+.container-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.container-details {
+    margin-top: 8px;
+}
+
 .server-metrics {
     margin-top: 20px;
 }

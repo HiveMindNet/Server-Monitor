@@ -1,6 +1,7 @@
 // State
 let currentUser = null;
 let servers = [];
+let containers = [];
 let refreshInterval = null;
 
 // Constants (hardcoded for browser)
@@ -130,8 +131,10 @@ async function loadServers() {
         }
         
         const data = await response.json();
-        servers = data.servers;
+        servers = data.servers || [];
+        containers = data.containers || [];
         renderServers();
+        renderContainers();
         updateStats();
         updateLastUpdated();
     } catch (error) {
@@ -252,15 +255,61 @@ function getStatusClass(status) {
     return 'error';
 }
 
+// Render containers
+function renderContainers() {
+    const container = document.getElementById('containers-list');
+    const noContainers = document.getElementById('no-containers');
+    
+    if (!container) return; // Element might not exist yet
+    
+    if (containers.length === 0) {
+        container.innerHTML = '';
+        if (noContainers) noContainers.classList.remove('hidden');
+        return;
+    }
+    
+    if (noContainers) noContainers.classList.add('hidden');
+    
+    container.innerHTML = containers.map(cont => {
+        const statusClass = cont.state === 'running' ? 'running' : 
+                          cont.state === 'exited' ? 'stopped' : 'error';
+        
+        return `
+            <div class="container-item">
+                <div class="container-info">
+                    <div class="container-name">🐳 ${escapeHtml(cont.name)}</div>
+                    <div class="container-details">
+                        <span style="color: var(--text-secondary); font-size: 0.85rem;">${escapeHtml(cont.image)}</span>
+                        ${cont.stats ? `
+                            <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 0.9rem;">
+                                <span style="color: var(--text-secondary);">CPU: <span style="color: ${parseFloat(cont.stats.cpu) > 80 ? 'var(--warning)' : 'var(--success)'}; font-weight: 600;">${cont.stats.cpu}%</span></span>
+                                <span style="color: var(--text-secondary);">MEM: <span style="color: ${parseFloat(cont.stats.memory) > 80 ? 'var(--warning)' : 'var(--success)'}; font-weight: 600;">${cont.stats.memory}%</span></span>
+                                <span style="color: var(--text-secondary);">${cont.stats.memoryUsage}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="server-status ${statusClass}">
+                    ${cont.state}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
 // Update stats
 function updateStats() {
     const total = servers.length;
     const running = servers.filter(s => s.status === 'running').length;
     const issues = servers.filter(s => checkForIssues(s).warning || checkForIssues(s).critical).length;
     
+    // Add container stats
+    const containerIssues = containers.filter(c => c.state !== 'running').length;
+    const totalIssues = issues + containerIssues;
+    
     document.getElementById('total-servers').textContent = total;
     document.getElementById('running-servers').textContent = running;
-    document.getElementById('issue-servers').textContent = issues;
+    document.getElementById('issue-servers').textContent = totalIssues;
 }
 
 // Update last updated time
