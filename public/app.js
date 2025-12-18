@@ -160,8 +160,11 @@ function renderServers() {
             <div class="server-card ${cardClass}">
                 <div class="server-header">
                     <div class="server-name">${escapeHtml(server.name)}</div>
-                    <div class="server-status ${getStatusClass(server.status)}">
-                        ${server.status}
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="server-status ${getStatusClass(server.status)}">
+                            ${server.status}
+                        </div>
+                        <button class="delete-btn" onclick="deleteServer('${server.id}')" title="Delete server">🗑️</button>
                     </div>
                 </div>
                 
@@ -323,6 +326,30 @@ async function handleAddServer(e) {
     } catch (error) {
         alert('Connection error. Please try again.');
         console.error('Error adding server:', error);
+    }
+}
+
+// Delete server
+async function deleteServer(serverId) {
+    if (!confirm('Are you sure you want to delete this server? This cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/servers/${serverId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            loadServers(); // Refresh the list
+        } else {
+            const data = await response.json();
+            alert('Error: ' + (data.error || 'Failed to delete server'));
+        }
+    } catch (error) {
+        alert('Connection error. Please try again.');
+        console.error('Error deleting server:', error);
     }
 }
 
