@@ -1,17 +1,29 @@
 {
   "name": "server-monitor",
-  "version": "1.0.0",
-  "description": "A server monitoring application",
+  "version": "2.0.0",
+  "description": "AWS EC2 Server Monitoring Application with Authentication",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "node index.js"
+    "dev": "nodemon index.js"
   },
-  "keywords": ["server", "monitor", "docker"],
+  "keywords": ["server", "monitor", "docker", "aws", "ec2"],
   "author": "HiveMindNet",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "dotenv": "^16.3.1",
+    "@aws-sdk/client-ec2": "^3.478.0",
+    "@aws-sdk/client-cloudwatch": "^3.478.0",
+    "node-ssh": "^13.1.0",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   }
 }
 
