@@ -306,6 +306,23 @@ body {
     opacity: 1;
 }
 
+.edit-name-btn {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.2s;
+    opacity: 0.6;
+    margin-left: 8px;
+}
+
+.edit-name-btn:hover {
+    background: rgba(37, 99, 235, 0.2);
+    opacity: 1;
+}
+
 /* Docker Containers */
 .containers-list {
     display: flex;

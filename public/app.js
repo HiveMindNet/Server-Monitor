@@ -167,8 +167,10 @@ function renderServers() {
                             <input type="checkbox" ${server.publicStatus !== false ? 'checked' : ''} onchange="togglePublicStatus('${server.id}', this.checked, 'server')" title="Include in public status page">
                             ${escapeHtml(server.name)}
                         </label>
+                        <button class="edit-name-btn" onclick="editDisplayName('${server.id}', '${escapeHtml(server.name)}', '${escapeHtml(server.displayName || '')}', 'server')" title="Edit display name for public status">✏️</button>
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px;">
+                        ${server.displayName ? `<span style="color: var(--text-secondary); font-size: 0.85rem;" title="Public display name">📝 ${escapeHtml(server.displayName)}</span>` : ''}
                         <div class="server-status ${getStatusClass(server.status)}">
                             ${server.status}
                         </div>
@@ -287,6 +289,8 @@ function renderContainers() {
                             <input type="checkbox" ${cont.publicStatus !== false ? 'checked' : ''} onchange="togglePublicStatus('${cont.id}', this.checked, 'container')" title="Include in public status page">
                             🐳 ${escapeHtml(cont.name)}
                         </label>
+                        <button class="edit-name-btn" onclick="editDisplayName('${cont.id}', '${escapeHtml(cont.name)}', '${escapeHtml(cont.displayName || '')}', 'container')" title="Edit display name for public status">✏️</button>
+                        ${cont.displayName ? `<span style="color: var(--text-secondary); font-size: 0.85rem; margin-left: 10px;" title="Public display name">📝 ${escapeHtml(cont.displayName)}</span>` : ''}
                     </div>
                     <div class="container-details">
                         <span style="color: var(--text-secondary); font-size: 0.85rem;">${escapeHtml(cont.image)}</span>
@@ -412,6 +416,41 @@ async function togglePublicStatus(id, isPublic, type) {
         alert('Connection error. Please try again.');
         console.error('Error updating public status:', error);
         loadServers(); // Reload to reset checkbox
+    }
+}
+
+// Edit display name
+function editDisplayName(id, actualName, currentDisplayName, type) {
+    const displayName = prompt(
+        `Edit public display name for: ${actualName}\n\n` +
+        `Leave empty to use actual name.\n` +
+        `Current display name: ${currentDisplayName || '(none)'}`,
+        currentDisplayName
+    );
+    
+    if (displayName === null) return; // Cancelled
+    
+    updateDisplayName(id, displayName.trim(), type);
+}
+
+async function updateDisplayName(id, displayName, type) {
+    try {
+        const response = await fetch(`/api/${type === 'server' ? 'servers' : 'containers'}/${id}/displayName`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ displayName: displayName || null })
+        });
+        
+        if (response.ok) {
+            loadServers(); // Reload to show new display name
+        } else {
+            const data = await response.json();
+            alert('Error: ' + (data.error || 'Failed to update display name'));
+        }
+    } catch (error) {
+        alert('Connection error. Please try again.');
+        console.error('Error updating display name:', error);
     }
 }
 

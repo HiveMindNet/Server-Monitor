@@ -147,12 +147,56 @@ app.put('/api/containers/:id/public', authMiddleware, (req, res) => {
       config = JSON.parse(fs.readFileSync(configFile, 'utf8'));
     }
     
-    config.containers[req.params.id] = { publicStatus };
+    if (!config.containers[req.params.id]) {
+      config.containers[req.params.id] = {};
+    }
+    config.containers[req.params.id].publicStatus = publicStatus;
     fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
     
     res.json({ success: true });
   } catch (error) {
     console.error('Error updating container public status:', error);
+    res.status(500).json({ error: 'Failed to update container' });
+  }
+});
+
+// Update server display name
+app.put('/api/servers/:id/displayName', authMiddleware, (req, res) => {
+  try {
+    const { displayName } = req.body;
+    const server = updateServer(req.params.id, { displayName });
+    if (!server) {
+      return res.status(404).json({ error: 'Server not found' });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating server display name:', error);
+    res.status(500).json({ error: 'Failed to update server' });
+  }
+});
+
+// Update container display name
+app.put('/api/containers/:id/displayName', authMiddleware, (req, res) => {
+  try {
+    const { displayName } = req.body;
+    const fs = require('fs');
+    const path = require('path');
+    const configFile = path.join(__dirname, 'data/container-config.json');
+    
+    let config = { containers: {} };
+    if (fs.existsSync(configFile)) {
+      config = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+    }
+    
+    if (!config.containers[req.params.id]) {
+      config.containers[req.params.id] = {};
+    }
+    config.containers[req.params.id].displayName = displayName;
+    fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating container display name:', error);
     res.status(500).json({ error: 'Failed to update container' });
   }
 });
@@ -177,7 +221,42 @@ app.delete('/api/servers/:id', authMiddleware, (req, res) => {
 app.get('/api/monitor/all', authMiddleware, async (req, res) => {
   try {
     const metrics = getLatestMetrics();
-    res.json(metrics);
+    const servers = getServers();
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Load container config for public status
+    const containerConfigFile = path.join(__dirname, 'data/container-config.json');
+    let containerConfig = { containers: {} };
+    if (fs.existsSync(containerConfigFile)) {
+      containerConfig = JSON.parse(fs.readFileSync(containerConfigFile, 'utf8'));
+    }
+    
+    // Merge server config (publicStatus, displayName) with metrics
+    const serversWithConfig = metrics.servers.map(serverMetric => {
+      const serverConfig = servers.find(s => s.id === serverMetric.id);
+      return {
+        ...serverMetric,
+        publicStatus: serverConfig?.publicStatus !== false,
+        displayName: serverConfig?.displayName || null
+      };
+    });
+    
+    // Merge container config with metrics
+    const containersWithConfig = (metrics.containers || []).map(container => {
+      const config = containerConfig.containers[container.id] || {};
+      return {
+        ...container,
+        publicStatus: config.publicStatus !== false,
+        displayName: config.displayName || null
+      };
+    });
+    
+    res.json({
+      ...metrics,
+      servers: serversWithConfig,
+      containers: containersWithConfig
+    });
   } catch (error) {
     console.error('Error getting metrics:', error);
     res.status(500).json({ error: 'Failed to get metrics' });
@@ -217,25 +296,41 @@ app.get('/api/status/public', (req, res) => {
       containerConfig = JSON.parse(fs.readFileSync(containerConfigFile, 'utf8'));
     }
     
+    // Get server configs for display names
+    const servers = getServers();
+    
     // Filter servers and containers by publicStatus flag (default to true)
     const publicServers = metrics.servers
+      .map(server => {
+        const serverConfig = servers.find(s => s.id === server.id);
+        return {
+          ...server,
+          publicStatus: serverConfig?.publicStatus !== false,
+          displayName: serverConfig?.displayName
+        };
+      })
       .filter(server => server.publicStatus !== false)
       .map(server => ({
         id: server.id,
-        name: server.name,
+        name: server.displayName || server.name,
         status: server.status,
         metrics: server.metrics,
         error: server.error
       }));
     
     const publicContainers = (metrics.containers || [])
-      .filter(container => {
-        const config = containerConfig.containers[container.id];
-        return !config || config.publicStatus !== false;
+      .map(container => {
+        const config = containerConfig.containers[container.id] || {};
+        return {
+          ...container,
+          publicStatus: config.publicStatus !== false,
+          displayName: config.displayName
+        };
       })
+      .filter(container => container.publicStatus !== false)
       .map(container => ({
         id: container.id,
-        name: container.name,
+        name: container.displayName || container.name,
         state: container.state,
         stats: container.stats
       }));
