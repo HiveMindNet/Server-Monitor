@@ -281,30 +281,40 @@ function renderContainers() {
         const statusClass = cont.state === 'running' ? 'running' : 
                           cont.state === 'exited' ? 'stopped' : 'error';
         
+        // Check for issues (high CPU or memory)
+        const hasIssue = cont.stats && (parseFloat(cont.stats.cpu) > 80 || parseFloat(cont.stats.memory) > 80);
+        const cardClass = cont.state !== 'running' ? 'error' : hasIssue ? 'warning' : '';
+        
         return `
-            <div class="container-item">
-                <div class="container-info">
-                    <div class="container-name">
+            <div class="server-card ${cardClass}">
+                <div class="server-header">
+                    <div class="server-name">
                         <label class="checkbox-label">
                             <input type="checkbox" ${cont.publicStatus !== false ? 'checked' : ''} onchange="togglePublicStatus('${cont.id}', this.checked, 'container')" title="Include in public status page">
                             🐳 ${escapeHtml(cont.name)}
                         </label>
                         <button class="edit-name-btn" onclick="editDisplayName('${cont.id}', '${escapeHtml(cont.name)}', '${escapeHtml(cont.displayName || '')}', 'container')" title="Edit display name for public status">✏️</button>
-                        ${cont.displayName ? `<span style="color: var(--text-secondary); font-size: 0.85rem; margin-left: 10px;" title="Public display name">📝 ${escapeHtml(cont.displayName)}</span>` : ''}
                     </div>
-                    <div class="container-details">
-                        <span style="color: var(--text-secondary); font-size: 0.85rem;">${escapeHtml(cont.image)}</span>
-                        ${cont.stats ? `
-                            <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 0.9rem;">
-                                <span style="color: var(--text-secondary);">CPU: <span style="color: ${parseFloat(cont.stats.cpu) > 80 ? 'var(--warning)' : 'var(--success)'}; font-weight: 600;">${cont.stats.cpu}%</span></span>
-                                <span style="color: var(--text-secondary);">MEM: <span style="color: ${parseFloat(cont.stats.memory) > 80 ? 'var(--warning)' : 'var(--success)'}; font-weight: 600;">${cont.stats.memory}%</span></span>
-                                <span style="color: var(--text-secondary);">${cont.stats.memoryUsage}</span>
-                            </div>
-                        ` : ''}
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        ${cont.displayName ? `<span style="color: var(--text-secondary); font-size: 0.85rem;" title="Public display name">📝 ${escapeHtml(cont.displayName)}</span>` : ''}
+                        <div class="server-status ${statusClass}">
+                            ${cont.state}
+                        </div>
                     </div>
                 </div>
-                <div class="server-status ${statusClass}">
-                    ${cont.state}
+                
+                ${cont.stats ? `
+                    <div class="server-metrics">
+                        ${renderMetric('CPU Usage', cont.stats.cpu, '%', 80, 90)}
+                        ${renderMetric('Memory Usage', cont.stats.memory, '%', 80, 90)}
+                        <div style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 10px;">
+                            💾 ${cont.stats.memoryUsage}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <div class="server-info">
+                    <div>Image: ${escapeHtml(cont.image)}</div>
                 </div>
             </div>
         `;
