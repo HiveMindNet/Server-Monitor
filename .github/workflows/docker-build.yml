@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: hivemindnet/Server-Monitor
+  IMAGE_NAME: hivemindnet/server-monitor
 
 jobs:
   build-and-push-to-ghcr:
