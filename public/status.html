@@ -151,6 +151,10 @@
             border-left: 4px solid var(--success);
         }
 
+        .server-item.status-under-load {
+            border-left: 4px solid var(--warning);
+        }
+
         .server-item.status-deteriorated {
             border-left: 4px solid var(--warning);
         }
@@ -172,6 +176,11 @@
         .status-badge.healthy {
             background: rgba(16, 185, 129, 0.2);
             color: var(--success);
+        }
+
+        .status-badge.under-load {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
         }
 
         .status-badge.deteriorated {
@@ -284,14 +293,56 @@
         function renderStatus(data) {
             const { servers, containers, lastUpdate } = data;
             
-            // Calculate overall status
-            const totalItems = servers.length + (containers?.length || 0);
-            const errorServers = servers.filter(s => s.status === 'error' || s.status === 'unreachable').length;
-            const deterioratedServers = servers.filter(s => s.status === 'running' && hasIssues(s)).length;
-            const errorContainers = (containers || []).filter(c => c.state !== 'running').length;
+            // Calculate detailed status counts
+            const allItems = [
+                ...servers.map(s => ({ ...s, type: 'server' })),
+                ...(containers || []).map(c => ({ ...c, type: 'container' }))
+            ];
             
-            const totalDown = errorServers + errorContainers;
-            const totalDeteriorated = deterioratedServers;
+            let downCount = 0;
+            let deterioratedCount = 0;
+            let underLoadCount = 0;
+            let healthyCount = 0;
+            
+            // Count each status type
+            allItems.forEach(item => {
+                if (item.type === 'server') {
+                    if (item.status !== 'running') {
+                        downCount++;
+                    } else if (item.metrics) {
+                        const cpu = parseFloat(item.metrics.cpu);
+                        const ram = parseFloat(item.metrics.ram);
+                        const disk = parseFloat(item.metrics.disk);
+                        
+                        if (cpu >= 100 || (disk >= 95 && ram >= 95) || (cpu >= 95 && ram >= 95 && disk >= 90)) {
+                            deterioratedCount++;
+                        } else if (cpu >= 95 || ram >= 95) {
+                            underLoadCount++;
+                        } else {
+                            healthyCount++;
+                        }
+                    } else {
+                        healthyCount++;
+                    }
+                } else {
+                    if (item.state !== 'running') {
+                        downCount++;
+                    } else if (item.stats) {
+                        const cpu = parseFloat(item.stats.cpu);
+                        const mem = parseFloat(item.stats.memory);
+                        
+                        if (cpu >= 100 || (cpu >= 95 && mem >= 95)) {
+                            deterioratedCount++;
+                        } else if (cpu >= 95 || mem >= 95) {
+                            underLoadCount++;
+                        } else {
+                            healthyCount++;
+                        }
+                    } else {
+                        healthyCount++;
+                    }
+                }
+            });
             
             // Update overall status
             const overallDiv = document.getElementById('overall-status');
@@ -299,29 +350,30 @@
             const statusText = document.getElementById('status-text');
             const statusDetail = document.getElementById('status-detail');
             
-            if (totalDown > 0) {
+            if (downCount > 0) {
                 overallDiv.className = 'overall-status down';
                 statusIcon.textContent = '⚠️';
                 statusText.textContent = 'Service Disruption';
-                statusDetail.textContent = `${totalDown} system${totalDown > 1 ? 's' : ''} down`;
-            } else if (totalDeteriorated > 0) {
+                statusDetail.textContent = `${downCount} system${downCount > 1 ? 's' : ''} down`;
+            } else if (deterioratedCount > 0) {
                 overallDiv.className = 'overall-status issues';
                 statusIcon.textContent = '⚠️';
-                statusText.textContent = 'Degraded Performance';
-                statusDetail.textContent = `${totalDeteriorated} system${totalDeteriorated > 1 ? 's' : ''} experiencing high load`;
+                statusText.textContent = 'Systems Deteriorated';
+                statusDetail.textContent = `${deterioratedCount} system${deterioratedCount > 1 ? 's' : ''} critically degraded`;
+            } else if (underLoadCount > 0) {
+                overallDiv.className = 'overall-status issues';
+                statusIcon.textContent = '⚠️';
+                statusText.textContent = 'Systems Under Load';
+                statusDetail.textContent = `${underLoadCount} system${underLoadCount > 1 ? 's' : ''} under heavy load`;
             } else {
                 overallDiv.className = 'overall-status operational';
                 statusIcon.textContent = '✓';
                 statusText.textContent = 'All Systems Operational';
-                statusDetail.textContent = `All ${totalItems} system${totalItems > 1 ? 's' : ''} running normally`;
+                statusDetail.textContent = `All ${allItems.length} system${allItems.length > 1 ? 's' : ''} running normally`;
             }
             
             // Render server and container list
             const serversList = document.getElementById('servers-list');
-            const allItems = [
-                ...servers.map(s => ({ ...s, type: 'server' })),
-                ...(containers || []).map(c => ({ ...c, type: 'container' }))
-            ];
             serversList.innerHTML = allItems.map(item => renderItem(item)).join('');
             
             // Update timestamp
@@ -336,28 +388,77 @@
             
             if (item.type === 'server') {
                 // Server status logic
-                if (item.status === 'running') {
-                    if (hasIssues(item)) {
+                if (item.status === 'running' && item.metrics) {
+                    const cpu = parseFloat(item.metrics.cpu);
+                    const ram = parseFloat(item.metrics.ram);
+                    const disk = parseFloat(item.metrics.disk);
+                    
+                    // Check for Down (should never happen if running, but just in case)
+                    if (item.status !== 'running') {
+                        statusClass = 'down';
+                        statusText = 'Down';
+                        statusIcon = '✗';
+                    }
+                    // Check for Deteriorated (CPU 100% AND/OR multiple critical issues)
+                    else if (cpu >= 100 || (disk >= 95 && ram >= 95) || (cpu >= 95 && ram >= 95 && disk >= 90)) {
                         statusClass = 'deteriorated';
                         statusText = 'Deteriorated';
                         statusIcon = '⚠️';
-                    } else {
+                    }
+                    // Check for Under Load (single metric high but not critical)
+                    else if (cpu >= 95 || ram >= 95) {
+                        statusClass = 'under-load';
+                        statusText = 'Under Load';
+                        statusIcon = '⚠️';
+                    }
+                    // Healthy
+                    else {
                         statusClass = 'healthy';
                         statusText = 'Healthy';
                         statusIcon = '✓';
                     }
+                } else if (item.status === 'running') {
+                    // Running but no metrics
+                    statusClass = 'healthy';
+                    statusText = 'Healthy';
+                    statusIcon = '✓';
                 } else {
+                    // Not running
                     statusClass = 'down';
                     statusText = 'Down';
                     statusIcon = '✗';
                 }
             } else {
                 // Container status logic
-                if (item.state === 'running') {
+                if (item.state === 'running' && item.stats) {
+                    const cpu = parseFloat(item.stats.cpu);
+                    const mem = parseFloat(item.stats.memory);
+                    
+                    // Check for Deteriorated (CPU 100% or both metrics very high)
+                    if (cpu >= 100 || (cpu >= 95 && mem >= 95)) {
+                        statusClass = 'deteriorated';
+                        statusText = 'Deteriorated';
+                        statusIcon = '⚠️';
+                    }
+                    // Check for Under Load (single metric high)
+                    else if (cpu >= 95 || mem >= 95) {
+                        statusClass = 'under-load';
+                        statusText = 'Under Load';
+                        statusIcon = '⚠️';
+                    }
+                    // Healthy
+                    else {
+                        statusClass = 'healthy';
+                        statusText = 'Healthy';
+                        statusIcon = '✓';
+                    }
+                } else if (item.state === 'running') {
+                    // Running but no stats
                     statusClass = 'healthy';
                     statusText = 'Healthy';
                     statusIcon = '✓';
                 } else {
+                    // Not running
                     statusClass = 'down';
                     statusText = 'Down';
                     statusIcon = '✗';
