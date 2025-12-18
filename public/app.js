@@ -3,11 +3,11 @@ let currentUser = null;
 let servers = [];
 let refreshInterval = null;
 
-// Constants
-const CPU_THRESHOLD = parseInt(process?.env?.CPU_THRESHOLD || '80');
-const RAM_THRESHOLD = parseInt(process?.env?.RAM_THRESHOLD || '80');
-const DISK_THRESHOLD = parseInt(process?.env?.DISK_THRESHOLD || '90');
-const MONITOR_INTERVAL = parseInt(process?.env?.MONITOR_INTERVAL || '30000');
+// Constants (hardcoded for browser)
+const CPU_THRESHOLD = 80;
+const RAM_THRESHOLD = 80;
+const DISK_THRESHOLD = 90;
+const MONITOR_INTERVAL = 30000;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
