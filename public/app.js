@@ -162,7 +162,12 @@ function renderServers() {
         return `
             <div class="server-card ${cardClass}">
                 <div class="server-header">
-                    <div class="server-name">${escapeHtml(server.name)}</div>
+                    <div class="server-name">
+                        <label class="checkbox-label">
+                            <input type="checkbox" ${server.publicStatus !== false ? 'checked' : ''} onchange="togglePublicStatus('${server.id}', this.checked, 'server')" title="Include in public status page">
+                            ${escapeHtml(server.name)}
+                        </label>
+                    </div>
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <div class="server-status ${getStatusClass(server.status)}">
                             ${server.status}
@@ -277,7 +282,12 @@ function renderContainers() {
         return `
             <div class="container-item">
                 <div class="container-info">
-                    <div class="container-name">🐳 ${escapeHtml(cont.name)}</div>
+                    <div class="container-name">
+                        <label class="checkbox-label">
+                            <input type="checkbox" ${cont.publicStatus !== false ? 'checked' : ''} onchange="togglePublicStatus('${cont.id}', this.checked, 'container')" title="Include in public status page">
+                            🐳 ${escapeHtml(cont.name)}
+                        </label>
+                    </div>
                     <div class="container-details">
                         <span style="color: var(--text-secondary); font-size: 0.85rem;">${escapeHtml(cont.image)}</span>
                         ${cont.stats ? `
@@ -299,17 +309,22 @@ function renderContainers() {
 
 // Update stats
 function updateStats() {
-    const total = servers.length;
-    const running = servers.filter(s => s.status === 'running').length;
-    const issues = servers.filter(s => checkForIssues(s).warning || checkForIssues(s).critical).length;
+    const totalServers = servers.length;
+    const totalContainers = containers.length;
     
-    // Add container stats
+    const runningServers = servers.filter(s => s.status === 'running').length;
+    const runningContainers = containers.filter(c => c.state === 'running').length;
+    
+    const serverIssues = servers.filter(s => s.status !== 'running' || checkForIssues(s).warning || checkForIssues(s).critical).length;
     const containerIssues = containers.filter(c => c.state !== 'running').length;
-    const totalIssues = issues + containerIssues;
     
-    document.getElementById('total-servers').textContent = total;
-    document.getElementById('running-servers').textContent = running;
-    document.getElementById('issue-servers').textContent = totalIssues;
+    const healthyCount = runningServers + runningContainers - servers.filter(s => s.status === 'running' && checkForIssues(s).warning).length;
+    const totalIssues = serverIssues + containerIssues;
+    
+    document.getElementById('total-servers').textContent = totalServers;
+    document.getElementById('total-containers').textContent = totalContainers;
+    document.getElementById('healthy-count').textContent = healthyCount;
+    document.getElementById('issue-count').textContent = totalIssues;
 }
 
 // Update last updated time
@@ -375,6 +390,28 @@ async function handleAddServer(e) {
     } catch (error) {
         alert('Connection error. Please try again.');
         console.error('Error adding server:', error);
+    }
+}
+
+// Toggle public status visibility
+async function togglePublicStatus(id, isPublic, type) {
+    try {
+        const response = await fetch(`/api/${type === 'server' ? 'servers' : 'containers'}/${id}/public`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ publicStatus: isPublic })
+        });
+        
+        if (!response.ok) {
+            const data = await response.json();
+            alert('Error: ' + (data.error || 'Failed to update status'));
+            loadServers(); // Reload to reset checkbox
+        }
+    } catch (error) {
+        alert('Connection error. Please try again.');
+        console.error('Error updating public status:', error);
+        loadServers(); // Reload to reset checkbox
     }
 }
 

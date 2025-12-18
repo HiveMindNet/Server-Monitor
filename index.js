@@ -118,6 +118,45 @@ app.put('/api/servers/:id', authMiddleware, (req, res) => {
   }
 });
 
+// Update server public status
+app.put('/api/servers/:id/public', authMiddleware, (req, res) => {
+  try {
+    const { publicStatus } = req.body;
+    const server = updateServer(req.params.id, { publicStatus });
+    if (!server) {
+      return res.status(404).json({ error: 'Server not found' });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating server public status:', error);
+    res.status(500).json({ error: 'Failed to update server' });
+  }
+});
+
+// Update container public status (stored in cache)
+app.put('/api/containers/:id/public', authMiddleware, (req, res) => {
+  try {
+    const { publicStatus } = req.body;
+    // Store container public status preferences in a separate file
+    const fs = require('fs');
+    const path = require('path');
+    const configFile = path.join(__dirname, 'data/container-config.json');
+    
+    let config = { containers: {} };
+    if (fs.existsSync(configFile)) {
+      config = JSON.parse(fs.readFileSync(configFile, 'utf8'));
+    }
+    
+    config.containers[req.params.id] = { publicStatus };
+    fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating container public status:', error);
+    res.status(500).json({ error: 'Failed to update container' });
+  }
+});
+
 // Delete server
 app.delete('/api/servers/:id', authMiddleware, (req, res) => {
   try {
@@ -168,15 +207,42 @@ app.get('/api/monitor/:id', authMiddleware, async (req, res) => {
 app.get('/api/status/public', (req, res) => {
   try {
     const metrics = getLatestMetrics();
-    // Don't expose sensitive server details in public view
-    const publicData = {
-      servers: metrics.servers.map(server => ({
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Load container config
+    const containerConfigFile = path.join(__dirname, 'data/container-config.json');
+    let containerConfig = { containers: {} };
+    if (fs.existsSync(containerConfigFile)) {
+      containerConfig = JSON.parse(fs.readFileSync(containerConfigFile, 'utf8'));
+    }
+    
+    // Filter servers and containers by publicStatus flag (default to true)
+    const publicServers = metrics.servers
+      .filter(server => server.publicStatus !== false)
+      .map(server => ({
         id: server.id,
         name: server.name,
         status: server.status,
         metrics: server.metrics,
         error: server.error
-      })),
+      }));
+    
+    const publicContainers = (metrics.containers || [])
+      .filter(container => {
+        const config = containerConfig.containers[container.id];
+        return !config || config.publicStatus !== false;
+      })
+      .map(container => ({
+        id: container.id,
+        name: container.name,
+        state: container.state,
+        stats: container.stats
+      }));
+    
+    const publicData = {
+      servers: publicServers,
+      containers: publicContainers,
       lastUpdate: metrics.lastUpdate
     };
     res.json(publicData);

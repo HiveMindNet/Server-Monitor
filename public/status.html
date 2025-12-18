@@ -147,26 +147,45 @@
             color: var(--danger);
         }
 
-        .server-status {
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-weight: 500;
-            font-size: 0.9rem;
+        .server-item.status-healthy {
+            border-left: 4px solid var(--success);
         }
 
-        .server-status.running {
+        .server-item.status-deteriorated {
+            border-left: 4px solid var(--warning);
+        }
+
+        .server-item.status-down {
+            border-left: 4px solid var(--danger);
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .status-badge.healthy {
             background: rgba(16, 185, 129, 0.2);
             color: var(--success);
         }
 
-        .server-status.error {
+        .status-badge.deteriorated {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .status-badge.down {
             background: rgba(239, 68, 68, 0.2);
             color: var(--danger);
         }
 
-        .server-status.unreachable {
-            background: rgba(245, 158, 11, 0.2);
-            color: var(--warning);
+        .status-icon {
+            font-size: 1.2rem;
         }
 
         .last-updated {
@@ -212,8 +231,8 @@
 <body>
     <div class="container">
         <header>
-            <h1>🖥️ Server Status</h1>
-            <p class="subtitle">Real-time monitoring dashboard</p>
+            <h1>🖥️ HiveMind Server Status</h1>
+            <p class="subtitle">Real-time infrastructure monitoring</p>
         </header>
 
         <div id="loading" class="loading">
@@ -263,12 +282,16 @@
         }
 
         function renderStatus(data) {
-            const { servers, lastUpdate } = data;
+            const { servers, containers, lastUpdate } = data;
             
             // Calculate overall status
-            const runningCount = servers.filter(s => s.status === 'running').length;
-            const errorCount = servers.filter(s => s.status === 'error' || s.status === 'unreachable').length;
-            const issueCount = servers.filter(s => hasIssues(s)).length;
+            const totalItems = servers.length + (containers?.length || 0);
+            const errorServers = servers.filter(s => s.status === 'error' || s.status === 'unreachable').length;
+            const deterioratedServers = servers.filter(s => s.status === 'running' && hasIssues(s)).length;
+            const errorContainers = (containers || []).filter(c => c.state !== 'running').length;
+            
+            const totalDown = errorServers + errorContainers;
+            const totalDeteriorated = deterioratedServers;
             
             // Update overall status
             const overallDiv = document.getElementById('overall-status');
@@ -276,26 +299,30 @@
             const statusText = document.getElementById('status-text');
             const statusDetail = document.getElementById('status-detail');
             
-            if (errorCount > 0) {
+            if (totalDown > 0) {
                 overallDiv.className = 'overall-status down';
                 statusIcon.textContent = '⚠️';
                 statusText.textContent = 'Service Disruption';
-                statusDetail.textContent = `${errorCount} server${errorCount > 1 ? 's' : ''} unreachable`;
-            } else if (issueCount > 0) {
+                statusDetail.textContent = `${totalDown} system${totalDown > 1 ? 's' : ''} down`;
+            } else if (totalDeteriorated > 0) {
                 overallDiv.className = 'overall-status issues';
                 statusIcon.textContent = '⚠️';
-                statusText.textContent = 'Partial Service Issues';
-                statusDetail.textContent = `${issueCount} server${issueCount > 1 ? 's' : ''} experiencing high load`;
+                statusText.textContent = 'Degraded Performance';
+                statusDetail.textContent = `${totalDeteriorated} system${totalDeteriorated > 1 ? 's' : ''} experiencing high load`;
             } else {
                 overallDiv.className = 'overall-status operational';
                 statusIcon.textContent = '✓';
                 statusText.textContent = 'All Systems Operational';
-                statusDetail.textContent = `All ${servers.length} server${servers.length > 1 ? 's' : ''} running normally`;
+                statusDetail.textContent = `All ${totalItems} system${totalItems > 1 ? 's' : ''} running normally`;
             }
             
-            // Render server list
+            // Render server and container list
             const serversList = document.getElementById('servers-list');
-            serversList.innerHTML = servers.map(server => renderServer(server)).join('');
+            const allItems = [
+                ...servers.map(s => ({ ...s, type: 'server' })),
+                ...(containers || []).map(c => ({ ...c, type: 'container' }))
+            ];
+            serversList.innerHTML = allItems.map(item => renderItem(item)).join('');
             
             // Update timestamp
             if (lastUpdate) {
@@ -304,45 +331,52 @@
             }
         }
 
-        function renderServer(server) {
-            const statusClass = server.status === 'running' ? 'running' : 
-                              server.status === 'unreachable' ? 'unreachable' : 'error';
+        function renderItem(item) {
+            let statusClass, statusText, statusIcon;
             
-            let metricsHtml = '';
-            if (server.metrics && server.status === 'running') {
-                metricsHtml = `
-                    <div class="server-metrics">
-                        ${renderMetric('CPU', server.metrics.cpu, '%')}
-                        ${renderMetric('RAM', server.metrics.ram, '%')}
-                        ${renderMetric('Disk', server.metrics.disk, '%')}
-                    </div>
-                `;
-            } else if (server.error) {
-                metricsHtml = `<div style="color: var(--danger); font-size: 0.9rem; margin-top: 5px;">⚠️ ${escapeHtml(server.error)}</div>`;
+            if (item.type === 'server') {
+                // Server status logic
+                if (item.status === 'running') {
+                    if (hasIssues(item)) {
+                        statusClass = 'deteriorated';
+                        statusText = 'Deteriorated';
+                        statusIcon = '⚠️';
+                    } else {
+                        statusClass = 'healthy';
+                        statusText = 'Healthy';
+                        statusIcon = '✓';
+                    }
+                } else {
+                    statusClass = 'down';
+                    statusText = 'Down';
+                    statusIcon = '✗';
+                }
+            } else {
+                // Container status logic
+                if (item.state === 'running') {
+                    statusClass = 'healthy';
+                    statusText = 'Healthy';
+                    statusIcon = '✓';
+                } else {
+                    statusClass = 'down';
+                    statusText = 'Down';
+                    statusIcon = '✗';
+                }
             }
             
+            const itemIcon = item.type === 'container' ? '🐳' : '🖥️';
+            
             return `
-                <div class="server-item">
+                <div class="server-item status-${statusClass}">
                     <div class="server-info">
-                        <div class="server-name">${escapeHtml(server.name)}</div>
-                        ${metricsHtml}
+                        <div class="server-name">${itemIcon} ${escapeHtml(item.name)}</div>
                     </div>
-                    <div class="server-status ${statusClass}">
-                        ${server.status}
+                    <div class="status-badge ${statusClass}">
+                        <span class="status-icon">${statusIcon}</span>
+                        <span class="status-text">${statusText}</span>
                     </div>
                 </div>
             `;
-        }
-
-        function renderMetric(label, value, unit) {
-            if (value === 'N/A') {
-                return `<div class="metric">${label}: <span class="metric-value">${value}</span></div>`;
-            }
-            
-            const numValue = parseFloat(value);
-            const statusClass = numValue >= 90 ? 'critical' : numValue >= 80 ? 'warning' : 'normal';
-            
-            return `<div class="metric">${label}: <span class="metric-value ${statusClass}">${value}${unit}</span></div>`;
         }
 
         function hasIssues(server) {
