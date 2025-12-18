@@ -42,6 +42,24 @@
             margin-bottom: 60px;
         }
 
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            height: 80px;
+            width: auto;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+            transition: transform 0.3s ease;
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
+        }
+
         h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
@@ -220,6 +238,10 @@
         }
 
         @media (max-width: 768px) {
+            .logo {
+                height: 60px;
+            }
+
             h1 {
                 font-size: 2rem;
             }
@@ -240,7 +262,10 @@
 <body>
     <div class="container">
         <header>
-            <h1>🖥️ HiveMind Server Status</h1>
+            <div class="logo-container">
+                <img src="https://desk.hivemindnetwork.com/assets/HiveMind_Logo-DA1o3iYP.png" alt="HiveMind Logo" class="logo">
+            </div>
+            <h1>HiveMind Server Status</h1>
             <p class="subtitle">Real-time infrastructure monitoring</p>
         </header>
 
