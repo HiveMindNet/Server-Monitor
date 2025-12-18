@@ -1,6 +1,9 @@
 # Use official Node.js LTS image
 FROM node:18-alpine
 
+# Install Docker CLI (for container monitoring)
+RUN apk add --no-cache docker-cli
+
 # Set working directory
 WORKDIR /app
 
@@ -15,6 +18,9 @@ COPY . .
 
 # Create data directory with proper permissions
 RUN mkdir -p /app/data && chown -R node:node /app/data
+
+# Add node user to docker group (GID 999 is common, will be overridden by host)
+RUN addgroup -g 999 docker 2>/dev/null || true && addgroup node docker 2>/dev/null || true
 
 # Expose port
 EXPOSE 3000
