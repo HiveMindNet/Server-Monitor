@@ -6,6 +6,7 @@ const path = require('path');
 const { initializeAdmin, verifyUser, generateToken, authMiddleware } = require('./config/auth');
 const { getServers, addServer, updateServer, deleteServer } = require('./config/servers');
 const { monitorServer } = require('./services/awsMonitor');
+const { startBackgroundMonitoring, getLatestMetrics } = require('./services/backgroundMonitor');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,6 +25,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Initialize admin user on startup
 initializeAdmin().catch(console.error);
+
+// Start background monitoring
+startBackgroundMonitoring();
 
 // ============ Authentication Routes ============
 
@@ -130,36 +134,61 @@ app.delete('/api/servers/:id', authMiddleware, (req, res) => {
 
 // ============ Monitoring Routes ============
 
-// Get metrics for all servers
+// Get metrics for all servers (uses cached data from background monitoring)
 app.get('/api/monitor/all', authMiddleware, async (req, res) => {
   try {
-    const servers = getServers();
-    const results = await Promise.all(
-      servers.map(server => monitorServer(server))
-    );
-    res.json({ servers: results });
+    const metrics = getLatestMetrics();
+    res.json(metrics);
   } catch (error) {
-    console.error('Error monitoring servers:', error);
-    res.status(500).json({ error: 'Failed to monitor servers' });
+    console.error('Error getting metrics:', error);
+    res.status(500).json({ error: 'Failed to get metrics' });
   }
 });
 
-// Get metrics for a specific server
+// Get metrics for a specific server (uses cached data)
 app.get('/api/monitor/:id', authMiddleware, async (req, res) => {
   try {
-    const servers = getServers();
-    const server = servers.find(s => s.id === req.params.id);
+    const metrics = getLatestMetrics();
+    const server = metrics.servers.find(s => s.id === req.params.id);
     
     if (!server) {
       return res.status(404).json({ error: 'Server not found' });
     }
     
-    const result = await monitorServer(server);
-    res.json(result);
+    res.json(server);
   } catch (error) {
-    console.error('Error monitoring server:', error);
-    res.status(500).json({ error: 'Failed to monitor server' });
+    console.error('Error getting server metrics:', error);
+    res.status(500).json({ error: 'Failed to get server metrics' });
   }
+});
+
+// ============ Public Status Page ============
+
+// Public status endpoint (no authentication required)
+app.get('/api/status/public', (req, res) => {
+  try {
+    const metrics = getLatestMetrics();
+    // Don't expose sensitive server details in public view
+    const publicData = {
+      servers: metrics.servers.map(server => ({
+        id: server.id,
+        name: server.name,
+        status: server.status,
+        metrics: server.metrics,
+        error: server.error
+      })),
+      lastUpdate: metrics.lastUpdate
+    };
+    res.json(publicData);
+  } catch (error) {
+    console.error('Error getting public status:', error);
+    res.status(500).json({ error: 'Failed to get status' });
+  }
+});
+
+// Serve public status page
+app.get('/status', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'status.html'));
 });
 
 // ============ Health Check ============

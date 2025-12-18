@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Status - HiveMindNet</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --text: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            background: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .overall-status {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 40px;
+            border: 2px solid var(--border);
+        }
+
+        .overall-status.operational {
+            border-color: var(--success);
+        }
+
+        .overall-status.issues {
+            border-color: var(--warning);
+        }
+
+        .overall-status.down {
+            border-color: var(--danger);
+        }
+
+        .status-indicator {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .status-text {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .status-detail {
+            color: var(--text-secondary);
+        }
+
+        .servers-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .server-item {
+            background: var(--surface);
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+
+        .server-item:hover {
+            transform: translateX(5px);
+        }
+
+        .server-info {
+            flex: 1;
+        }
+
+        .server-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .server-metrics {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .metric {
+            color: var(--text-secondary);
+        }
+
+        .metric-value {
+            font-weight: 600;
+            margin-left: 5px;
+        }
+
+        .metric-value.normal {
+            color: var(--success);
+        }
+
+        .metric-value.warning {
+            color: var(--warning);
+        }
+
+        .metric-value.critical {
+            color: var(--danger);
+        }
+
+        .server-status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .server-status.running {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .server-status.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .server-status.unreachable {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .last-updated {
+            text-align: center;
+            margin-top: 40px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .server-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .server-metrics {
+                flex-direction: column;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🖥️ Server Status</h1>
+            <p class="subtitle">Real-time monitoring dashboard</p>
+        </header>
+
+        <div id="loading" class="loading">
+            Loading server status...
+        </div>
+
+        <div id="error" class="error-message" style="display: none;"></div>
+
+        <div id="content" style="display: none;">
+            <div id="overall-status" class="overall-status">
+                <div class="status-indicator" id="status-icon">✓</div>
+                <div class="status-text" id="status-text">All Systems Operational</div>
+                <div class="status-detail" id="status-detail">All servers are running normally</div>
+            </div>
+
+            <div class="servers-list" id="servers-list"></div>
+
+            <div class="last-updated">
+                Last updated: <span id="last-updated">Never</span>
+                <br>
+                Auto-refreshes every 30 seconds
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadStatus() {
+            try {
+                const response = await fetch('/api/status/public');
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load status');
+                }
+                
+                const data = await response.json();
+                renderStatus(data);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = 'Failed to load server status. Please try again later.';
+                console.error('Error loading status:', error);
+            }
+        }
+
+        function renderStatus(data) {
+            const { servers, lastUpdate } = data;
+            
+            // Calculate overall status
+            const runningCount = servers.filter(s => s.status === 'running').length;
+            const errorCount = servers.filter(s => s.status === 'error' || s.status === 'unreachable').length;
+            const issueCount = servers.filter(s => hasIssues(s)).length;
+            
+            // Update overall status
+            const overallDiv = document.getElementById('overall-status');
+            const statusIcon = document.getElementById('status-icon');
+            const statusText = document.getElementById('status-text');
+            const statusDetail = document.getElementById('status-detail');
+            
+            if (errorCount > 0) {
+                overallDiv.className = 'overall-status down';
+                statusIcon.textContent = '⚠️';
+                statusText.textContent = 'Service Disruption';
+                statusDetail.textContent = `${errorCount} server${errorCount > 1 ? 's' : ''} unreachable`;
+            } else if (issueCount > 0) {
+                overallDiv.className = 'overall-status issues';
+                statusIcon.textContent = '⚠️';
+                statusText.textContent = 'Partial Service Issues';
+                statusDetail.textContent = `${issueCount} server${issueCount > 1 ? 's' : ''} experiencing high load`;
+            } else {
+                overallDiv.className = 'overall-status operational';
+                statusIcon.textContent = '✓';
+                statusText.textContent = 'All Systems Operational';
+                statusDetail.textContent = `All ${servers.length} server${servers.length > 1 ? 's' : ''} running normally`;
+            }
+            
+            // Render server list
+            const serversList = document.getElementById('servers-list');
+            serversList.innerHTML = servers.map(server => renderServer(server)).join('');
+            
+            // Update timestamp
+            if (lastUpdate) {
+                const date = new Date(lastUpdate);
+                document.getElementById('last-updated').textContent = date.toLocaleString();
+            }
+        }
+
+        function renderServer(server) {
+            const statusClass = server.status === 'running' ? 'running' : 
+                              server.status === 'unreachable' ? 'unreachable' : 'error';
+            
+            let metricsHtml = '';
+            if (server.metrics && server.status === 'running') {
+                metricsHtml = `
+                    <div class="server-metrics">
+                        ${renderMetric('CPU', server.metrics.cpu, '%')}
+                        ${renderMetric('RAM', server.metrics.ram, '%')}
+                        ${renderMetric('Disk', server.metrics.disk, '%')}
+                    </div>
+                `;
+            } else if (server.error) {
+                metricsHtml = `<div style="color: var(--danger); font-size: 0.9rem; margin-top: 5px;">⚠️ ${escapeHtml(server.error)}</div>`;
+            }
+            
+            return `
+                <div class="server-item">
+                    <div class="server-info">
+                        <div class="server-name">${escapeHtml(server.name)}</div>
+                        ${metricsHtml}
+                    </div>
+                    <div class="server-status ${statusClass}">
+                        ${server.status}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderMetric(label, value, unit) {
+            if (value === 'N/A') {
+                return `<div class="metric">${label}: <span class="metric-value">${value}</span></div>`;
+            }
+            
+            const numValue = parseFloat(value);
+            const statusClass = numValue >= 90 ? 'critical' : numValue >= 80 ? 'warning' : 'normal';
+            
+            return `<div class="metric">${label}: <span class="metric-value ${statusClass}">${value}${unit}</span></div>`;
+        }
+
+        function hasIssues(server) {
+            if (!server.metrics) return false;
+            const cpu = parseFloat(server.metrics.cpu);
+            const ram = parseFloat(server.metrics.ram);
+            const disk = parseFloat(server.metrics.disk);
+            return cpu >= 80 || ram >= 80 || disk >= 80;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load status on page load
+        loadStatus();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(loadStatus, 30000);
+    </script>
+</body>
+</html>
+

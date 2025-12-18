@@ -1,14 +1,59 @@
 # Server Monitor - Functionality Documentation
 
 ## Overview
-Server Monitor is a comprehensive AWS EC2 monitoring application with authentication that tracks CPU, RAM, and disk usage across multiple servers with real-time alerts.
+Server Monitor is a comprehensive AWS EC2 monitoring application with authentication that tracks CPU, RAM, and disk usage across multiple servers with real-time alerts, background monitoring, and a public status page.
 
 ## Version
-Current version: 2.0.0
+Current version: 2.1.0
 
 ## Features and Functions
 
-### 1. Authentication System
+### 1. Background Monitoring System (NEW in v2.1.0)
+
+#### Continuous Monitoring
+- **Automatic Monitoring**: Runs every 30 seconds (configurable) even when no one is logged in
+- **Background Service**: Starts automatically when the application starts
+- **Metrics Caching**: Stores latest metrics in memory and on disk
+- **Persistent Cache**: Metrics survive container restarts via disk cache
+- **Logging**: Console logs for each monitoring cycle with timing and issue counts
+
+#### Monitoring Service Features
+- **Parallel Execution**: All servers monitored simultaneously for speed
+- **Error Handling**: Graceful handling of connection failures
+- **Performance Tracking**: Monitors duration of each check cycle
+- **Issue Detection**: Counts and logs servers with errors or unreachable status
+
+#### Cache Management
+- **In-Memory Cache**: Fast access to latest metrics
+- **Disk Persistence**: Saves to `data/metrics-cache.json`
+- **Auto-Loading**: Loads cached metrics on startup
+- **Timestamp Tracking**: Records last update time for each monitoring cycle
+
+### 2. Public Status Page (NEW in v2.1.0)
+
+#### Public Access
+- **No Authentication Required**: `/status` endpoint is publicly accessible
+- **Real-time Display**: Shows current status of all monitored servers
+- **Auto-Refresh**: Updates every 30 seconds automatically
+- **Mobile Responsive**: Works on all device sizes
+
+#### Status Page Features
+- **Overall System Status**:
+  - ✓ All Systems Operational (all servers healthy)
+  - ⚠️ Partial Service Issues (servers with high load)
+  - ⚠️ Service Disruption (servers unreachable)
+- **Server List**: Shows each server with name, status, and metrics
+- **Visual Indicators**: Color-coded status badges (green/yellow/red)
+- **Metric Display**: CPU, RAM, and Disk usage with color coding
+- **Last Updated Timestamp**: Shows when data was last refreshed
+- **Error Messages**: Displays connection errors when servers unreachable
+
+#### Public API Endpoint
+- **GET /api/status/public**: Returns sanitized metrics without sensitive data
+- **No Private Information**: SSH keys, usernames, and hosts excluded
+- **JSON Format**: Structured data for integration with other systems
+
+### 3. Authentication System
 
 #### User Management
 - **Secure Password Storage**: Uses bcryptjs for password hashing
@@ -66,7 +111,15 @@ Current version: 2.0.0
 - **Disk Space**: Total, used, and free space in human-readable format
 - **Timestamp**: ISO 8601 timestamp of measurement
 
-### 4. Frontend Dashboard
+### 4. Dashboard UI Enhancements (Updated in v2.1.0)
+
+#### Server Management
+- **Delete Functionality**: 🗑️ delete button on each server card
+- **Confirmation Dialogs**: Prevents accidental deletions
+- **Real-time Updates**: Servers removed immediately from display
+- **Cached Metrics**: Dashboard now uses pre-fetched background data for instant loading
+
+### 5. Frontend Dashboard
 
 #### User Interface Components
 - **Login Screen**: Clean authentication interface
@@ -87,10 +140,12 @@ Current version: 2.0.0
 - **Status Badges**: Color-coded status indicators per server
 
 #### Real-time Features
-- **Auto-refresh**: Automatic data refresh every 30 seconds
+- **Auto-refresh**: Dashboard updates every 30 seconds using cached data
 - **Manual Refresh**: On-demand refresh button
 - **Live Metrics**: Progress bars showing current utilization
 - **Timestamp Display**: Last updated time shown
+- **Instant Loading**: Uses background-monitored cached metrics for immediate display
+- **Always Current**: Background monitoring keeps data fresh even when logged out
 
 #### Metric Thresholds
 - **CPU Warning**: 80% (configurable)
@@ -100,7 +155,7 @@ Current version: 2.0.0
 - **Disk Warning**: 80% (configurable)
 - **Disk Critical**: 90% (configurable)
 
-### 5. Server Monitoring Service
+### 6. Server Monitoring Service
 
 #### Connection Methods
 - **SSH Monitoring**: Direct SSH connection for detailed metrics
@@ -112,7 +167,7 @@ Current version: 2.0.0
 - **Timeout Management**: Proper SSH connection timeouts
 - **Status Reporting**: Clear error messages in UI
 
-### 6. Configuration
+### 7. Configuration
 
 #### Environment Variables
 - `PORT`: Server port (default: 3000)
@@ -129,25 +184,33 @@ Current version: 2.0.0
 - `RAM_THRESHOLD`: RAM warning threshold (default: 80)
 - `DISK_THRESHOLD`: Disk warning threshold (default: 90)
 
-### 7. API Endpoints
+### 8. API Endpoints
 
 #### Public Endpoints
 - **GET /health**: Health check endpoint
 - **GET /**: Serves frontend application
+- **GET /status**: Public status page (no authentication)
+- **GET /api/status/public**: Public API for status data (no authentication)
 
 #### Protected Endpoints (Require Authentication)
-All `/api/*` endpoints except `/api/auth/login` require valid JWT token
+All `/api/*` endpoints except `/api/auth/login` and `/api/status/public` require valid JWT token
+
+#### Monitoring Endpoints (Updated in v2.1.0)
+- **GET /api/monitor/all**: Returns cached metrics from background monitoring
+- **GET /api/monitor/:id**: Returns cached metrics for specific server
+- Note: No longer performs live monitoring on request; uses cached data for instant response
 
 #### Response Formats
 - All responses in JSON format
 - Consistent error message structure
 - HTTP status codes for different scenarios
 
-### 8. Data Persistence
+### 9. Data Persistence
 
 #### File-based Storage
 - **data/users.json**: User account information
 - **data/servers.json**: Server configurations and credentials
+- **data/metrics-cache.json**: Cached monitoring metrics (NEW in v2.1.0)
 
 #### Security Considerations
 - Passwords hashed with bcrypt (10 rounds)
@@ -155,7 +218,7 @@ All `/api/*` endpoints except `/api/auth/login` require valid JWT token
 - Never expose private keys in API responses
 - Token-based authentication for all sensitive operations
 
-### 9. Docker Support
+### 10. Docker Support
 
 #### Dockerfile Features
 - **Base Image**: Node.js 18 Alpine (lightweight)
@@ -169,7 +232,7 @@ All `/api/*` endpoints except `/api/auth/login` require valid JWT token
 - Consider volume mounting for data persistence
 - Environment variables for configuration
 
-### 10. CI/CD Pipeline
+### 11. CI/CD Pipeline
 
 #### GitHub Actions Workflow
 - **Trigger**: Automatic build on push to main branch
@@ -198,10 +261,26 @@ All `/api/*` endpoints except `/api/auth/login` require valid JWT token
 ## Usage Workflow
 
 1. **Initial Setup**: Set environment variables and start application
-2. **First Login**: Use admin credentials from environment variables
-3. **Add Servers**: Configure servers with SSH credentials and optional EC2 instance IDs
-4. **Monitor**: View real-time metrics with automatic refresh
-5. **Alert Response**: Red-highlighted cards indicate servers requiring attention
+2. **Background Monitoring Starts**: Automatically begins monitoring all configured servers
+3. **First Login**: Use admin credentials from environment variables
+4. **Add Servers**: Configure servers with SSH credentials and optional EC2 instance IDs
+5. **Monitor**: View real-time metrics from background monitoring
+6. **Public Status**: Share `/status` page for public visibility (no login required)
+7. **Alert Response**: Red-highlighted cards indicate servers requiring attention
+
+## Key Improvements in v2.1.0
+
+### Background Monitoring
+- **Always Running**: Monitoring continues 24/7 even when no one is logged in
+- **Faster Dashboard**: Instant loading using pre-cached metrics
+- **Reliable Data**: Consistent monitoring intervals regardless of user activity
+- **Lower Load**: API requests don't trigger new SSH connections
+
+### Public Status Page
+- **External Visibility**: Share server status without granting login access
+- **Customer-Facing**: Use as a status page for clients/stakeholders
+- **Clean Design**: Modern, responsive interface
+- **Privacy Preserved**: No sensitive server details exposed
 
 ## Technical Architecture
 
