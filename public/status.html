@@ -15,7 +15,9 @@
             --primary: #2563eb;
             --success: #10b981;
             --danger: #ef4444;
+            --critical: #dc2626;
             --warning: #f59e0b;
+            --heavily-loaded: #fbbf24;
             --background: #0f172a;
             --surface: #1e293b;
             --text: #f1f5f9;
@@ -169,16 +171,20 @@
             border-left: 4px solid var(--success);
         }
 
-        .server-item.status-under-load {
+        .server-item.status-heavily-loaded {
+            border-left: 4px solid var(--heavily-loaded);
+        }
+
+        .server-item.status-warning {
             border-left: 4px solid var(--warning);
         }
 
-        .server-item.status-deteriorated {
-            border-left: 4px solid var(--warning);
+        .server-item.status-critical {
+            border-left: 4px solid var(--critical);
         }
 
         .server-item.status-down {
-            border-left: 4px solid var(--danger);
+            border-left: 4px solid #64748b;
         }
 
         .status-badge {
@@ -196,19 +202,24 @@
             color: var(--success);
         }
 
-        .status-badge.under-load {
+        .status-badge.heavily-loaded {
+            background: rgba(251, 191, 36, 0.2);
+            color: var(--heavily-loaded);
+        }
+
+        .status-badge.warning {
             background: rgba(245, 158, 11, 0.2);
             color: var(--warning);
         }
 
-        .status-badge.deteriorated {
-            background: rgba(245, 158, 11, 0.2);
-            color: var(--warning);
+        .status-badge.critical {
+            background: rgba(220, 38, 38, 0.2);
+            color: var(--critical);
         }
 
         .status-badge.down {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--danger);
+            background: rgba(100, 116, 139, 0.2);
+            color: #94a3b8;
         }
 
         .status-icon {
@@ -325,8 +336,9 @@
             ];
             
             let downCount = 0;
-            let deterioratedCount = 0;
-            let underLoadCount = 0;
+            let criticalCount = 0;
+            let warningCount = 0;
+            let heavilyLoadedCount = 0;
             let healthyCount = 0;
             
             // Count each status type
@@ -339,11 +351,20 @@
                         const ram = parseFloat(item.metrics.ram);
                         const disk = parseFloat(item.metrics.disk);
                         
-                        if (cpu >= 100 || (disk >= 95 && ram >= 95) || (cpu >= 95 && ram >= 95 && disk >= 90)) {
-                            deterioratedCount++;
-                        } else if (cpu >= 95 || ram >= 95) {
-                            underLoadCount++;
-                        } else {
+                        // Critical: Disk ≥90% OR RAM ≥95% OR (CPU 100% AND RAM ≥90%)
+                        if (disk >= 90 || ram >= 95 || (cpu >= 100 && ram >= 90)) {
+                            criticalCount++;
+                        }
+                        // Warning: RAM 90-94% OR (CPU ≥95% AND RAM ≥80%) OR (Disk ≥85% AND RAM ≥80%)
+                        else if ((ram >= 90 && ram < 95) || (cpu >= 95 && ram >= 80) || (disk >= 85 && ram >= 80)) {
+                            warningCount++;
+                        }
+                        // Heavily Loaded: CPU ≥95% only
+                        else if (cpu >= 95) {
+                            heavilyLoadedCount++;
+                        }
+                        // Healthy
+                        else {
                             healthyCount++;
                         }
                     } else {
@@ -356,11 +377,20 @@
                         const cpu = parseFloat(item.stats.cpu);
                         const mem = parseFloat(item.stats.memory);
                         
-                        if (cpu >= 100 || (cpu >= 95 && mem >= 95)) {
-                            deterioratedCount++;
-                        } else if (cpu >= 95 || mem >= 95) {
-                            underLoadCount++;
-                        } else {
+                        // Critical: Memory ≥95% OR (CPU 100% AND Memory ≥90%)
+                        if (mem >= 95 || (cpu >= 100 && mem >= 90)) {
+                            criticalCount++;
+                        }
+                        // Warning: Memory 90-94% OR (CPU ≥95% AND Memory ≥80%)
+                        else if ((mem >= 90 && mem < 95) || (cpu >= 95 && mem >= 80)) {
+                            warningCount++;
+                        }
+                        // Heavily Loaded: CPU ≥95% only
+                        else if (cpu >= 95) {
+                            heavilyLoadedCount++;
+                        }
+                        // Healthy
+                        else {
                             healthyCount++;
                         }
                     } else {
@@ -377,24 +407,29 @@
             
             if (downCount > 0) {
                 overallDiv.className = 'overall-status down';
-                statusIcon.textContent = '⚠️';
+                statusIcon.textContent = '❌';
                 statusText.textContent = 'Service Disruption';
-                statusDetail.textContent = `${downCount} system${downCount > 1 ? 's' : ''} down`;
-            } else if (deterioratedCount > 0) {
+                statusDetail.textContent = `${downCount} system${downCount > 1 ? 's are' : ' is'} down`;
+            } else if (criticalCount > 0) {
+                overallDiv.className = 'overall-status down';
+                statusIcon.textContent = '🔥';
+                statusText.textContent = 'Critical Issues';
+                statusDetail.textContent = `${criticalCount} system${criticalCount > 1 ? 's have' : ' has'} critical issues`;
+            } else if (warningCount > 0) {
                 overallDiv.className = 'overall-status issues';
                 statusIcon.textContent = '⚠️';
-                statusText.textContent = 'Systems Deteriorated';
-                statusDetail.textContent = `${deterioratedCount} system${deterioratedCount > 1 ? 's' : ''} critically degraded`;
-            } else if (underLoadCount > 0) {
+                statusText.textContent = 'Systems Need Attention';
+                statusDetail.textContent = `${warningCount} system${warningCount > 1 ? 's need' : ' needs'} attention`;
+            } else if (heavilyLoadedCount > 0) {
                 overallDiv.className = 'overall-status issues';
-                statusIcon.textContent = '⚠️';
-                statusText.textContent = 'Systems Under Load';
-                statusDetail.textContent = `${underLoadCount} system${underLoadCount > 1 ? 's' : ''} under heavy load`;
+                statusIcon.textContent = '📊';
+                statusText.textContent = 'Systems Heavily Loaded';
+                statusDetail.textContent = `${heavilyLoadedCount} system${heavilyLoadedCount > 1 ? 's are' : ' is'} under heavy load`;
             } else {
                 overallDiv.className = 'overall-status operational';
                 statusIcon.textContent = '✓';
                 statusText.textContent = 'All Systems Operational';
-                statusDetail.textContent = `All ${allItems.length} system${allItems.length > 1 ? 's' : ''} running normally`;
+                statusDetail.textContent = `All ${allItems.length} system${allItems.length > 1 ? 's are' : ' is'} running normally`;
             }
             
             // Render server and container list
@@ -424,17 +459,23 @@
                         statusText = 'Down';
                         statusIcon = '✗';
                     }
-                    // Check for Deteriorated (CPU 100% AND/OR multiple critical issues)
-                    else if (cpu >= 100 || (disk >= 95 && ram >= 95) || (cpu >= 95 && ram >= 95 && disk >= 90)) {
-                        statusClass = 'deteriorated';
-                        statusText = 'Deteriorated';
+                    // Critical: Disk ≥90% OR RAM ≥95% OR (CPU 100% AND RAM ≥90%)
+                    else if (disk >= 90 || ram >= 95 || (cpu >= 100 && ram >= 90)) {
+                        statusClass = 'critical';
+                        statusText = 'Critical';
+                        statusIcon = '🔥';
+                    }
+                    // Warning: RAM 90-94% OR (CPU ≥95% AND RAM ≥80%) OR (Disk ≥85% AND RAM ≥80%)
+                    else if ((ram >= 90 && ram < 95) || (cpu >= 95 && ram >= 80) || (disk >= 85 && ram >= 80)) {
+                        statusClass = 'warning';
+                        statusText = 'Warning';
                         statusIcon = '⚠️';
                     }
-                    // Check for Under Load (single metric high but not critical)
-                    else if (cpu >= 95 || ram >= 95) {
-                        statusClass = 'under-load';
-                        statusText = 'Under Load';
-                        statusIcon = '⚠️';
+                    // Heavily Loaded: CPU ≥95% only (other metrics OK)
+                    else if (cpu >= 95) {
+                        statusClass = 'heavily-loaded';
+                        statusText = 'Heavily Loaded';
+                        statusIcon = '📊';
                     }
                     // Healthy
                     else {
@@ -454,22 +495,28 @@
                     statusIcon = '✗';
                 }
             } else {
-                // Container status logic
+                // Container status logic (no disk metric)
                 if (item.state === 'running' && item.stats) {
                     const cpu = parseFloat(item.stats.cpu);
                     const mem = parseFloat(item.stats.memory);
                     
-                    // Check for Deteriorated (CPU 100% or both metrics very high)
-                    if (cpu >= 100 || (cpu >= 95 && mem >= 95)) {
-                        statusClass = 'deteriorated';
-                        statusText = 'Deteriorated';
+                    // Critical: Memory ≥95% OR (CPU 100% AND Memory ≥90%)
+                    if (mem >= 95 || (cpu >= 100 && mem >= 90)) {
+                        statusClass = 'critical';
+                        statusText = 'Critical';
+                        statusIcon = '🔥';
+                    }
+                    // Warning: Memory 90-94% OR (CPU ≥95% AND Memory ≥80%)
+                    else if ((mem >= 90 && mem < 95) || (cpu >= 95 && mem >= 80)) {
+                        statusClass = 'warning';
+                        statusText = 'Warning';
                         statusIcon = '⚠️';
                     }
-                    // Check for Under Load (single metric high)
-                    else if (cpu >= 95 || mem >= 95) {
-                        statusClass = 'under-load';
-                        statusText = 'Under Load';
-                        statusIcon = '⚠️';
+                    // Heavily Loaded: CPU ≥95% only (memory OK)
+                    else if (cpu >= 95) {
+                        statusClass = 'heavily-loaded';
+                        statusText = 'Heavily Loaded';
+                        statusIcon = '📊';
                     }
                     // Healthy
                     else {
