@@ -30,6 +30,12 @@ function setupEventListeners() {
     // Add server form
     document.getElementById('add-server-form')?.addEventListener('submit', handleAddServer);
     
+    // Email settings button
+    document.getElementById('email-settings-btn')?.addEventListener('click', openEmailSettingsModal);
+    
+    // Test email button
+    document.getElementById('test-email-btn')?.addEventListener('click', sendTestEmail);
+    
     // Refresh button
     document.getElementById('refresh-btn')?.addEventListener('click', loadServers);
 }
@@ -404,6 +410,93 @@ async function handleAddServer(e) {
     } catch (error) {
         alert('Connection error. Please try again.');
         console.error('Error adding server:', error);
+    }
+}
+
+// Email Settings Modal functions
+async function openEmailSettingsModal() {
+    const modal = document.getElementById('email-settings-modal');
+    modal.classList.remove('hidden');
+    
+    // Load email status
+    try {
+        const response = await fetch('/api/email/status', {
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            if (data.configured) {
+                // Show configured section
+                document.getElementById('email-configured').classList.remove('hidden');
+                document.getElementById('email-not-configured').classList.add('hidden');
+                
+                // Fill in config details
+                document.getElementById('config-smtp-host').textContent = data.config.smtpHost;
+                document.getElementById('config-smtp-port').textContent = data.config.smtpPort;
+                document.getElementById('config-from').textContent = data.config.alertFrom;
+                document.getElementById('config-to').textContent = data.config.alertTo;
+            } else {
+                // Show not configured section
+                document.getElementById('email-configured').classList.add('hidden');
+                document.getElementById('email-not-configured').classList.remove('hidden');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading email status:', error);
+        // Show not configured by default if error
+        document.getElementById('email-configured').classList.add('hidden');
+        document.getElementById('email-not-configured').classList.remove('hidden');
+    }
+}
+
+function closeEmailSettingsModal() {
+    document.getElementById('email-settings-modal').classList.add('hidden');
+    // Clear test email status
+    const statusEl = document.getElementById('test-email-status');
+    statusEl.textContent = '';
+    statusEl.className = '';
+}
+
+async function sendTestEmail() {
+    const btn = document.getElementById('test-email-btn');
+    const statusEl = document.getElementById('test-email-status');
+    
+    // Disable button and show loading
+    btn.disabled = true;
+    btn.textContent = '📨 Sending...';
+    statusEl.textContent = 'Sending test email...';
+    statusEl.className = 'loading';
+    
+    try {
+        const response = await fetch('/api/email/test', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            statusEl.textContent = '✅ ' + data.message;
+            statusEl.className = 'success';
+        } else {
+            statusEl.textContent = '❌ ' + (data.error || 'Failed to send test email');
+            statusEl.className = 'error';
+        }
+    } catch (error) {
+        statusEl.textContent = '❌ Connection error';
+        statusEl.className = 'error';
+        console.error('Error sending test email:', error);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '📨 Send Test Email';
+        
+        // Clear status after 5 seconds
+        setTimeout(() => {
+            statusEl.textContent = '';
+            statusEl.className = '';
+        }, 5000);
     }
 }
 

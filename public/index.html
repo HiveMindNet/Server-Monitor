@@ -33,6 +33,7 @@
                 <div class="header-actions">
                     <span class="user-info">👤 <span id="username-display"></span></span>
                     <button id="add-server-btn" class="btn btn-secondary">+ Add Server</button>
+                    <button id="email-settings-btn" class="btn btn-secondary">📧 Email Alerts</button>
                     <button id="refresh-btn" class="btn btn-secondary">🔄 Refresh</button>
                     <button id="logout-btn" class="btn btn-secondary">Logout</button>
                 </div>
@@ -117,6 +118,98 @@
                     <button type="submit" class="btn btn-primary">Add Server</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Email Settings Modal -->
+    <div id="email-settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📧 Email Alert Settings</h2>
+                <button class="close-btn" onclick="closeEmailSettingsModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="email-status-container">
+                    <!-- Status will be loaded here -->
+                </div>
+                
+                <div id="email-configured" class="hidden">
+                    <div class="info-box success">
+                        <h3>✅ Email Alerts Configured</h3>
+                        <p>Email notifications are active and will be sent for:</p>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li><strong>Down</strong> - Server or container offline</li>
+                            <li><strong>Critical</strong> - Disk ≥90%, RAM ≥95%, or severe issues</li>
+                            <li><strong>Warning</strong> - Multiple metrics elevated</li>
+                        </ul>
+                        <p style="margin-top: 15px; font-size: 0.9em; color: #64748b;">
+                            <strong>Note:</strong> You won't receive duplicate alerts for the same issue within 1 hour.
+                        </p>
+                    </div>
+                    
+                    <div class="config-details">
+                        <h3>Current Configuration</h3>
+                        <table class="config-table">
+                            <tr>
+                                <td><strong>SMTP Host:</strong></td>
+                                <td id="config-smtp-host">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>SMTP Port:</strong></td>
+                                <td id="config-smtp-port">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>From Address:</strong></td>
+                                <td id="config-from">-</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Alert To:</strong></td>
+                                <td id="config-to">-</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin-top: 20px;">
+                        <button id="test-email-btn" class="btn btn-primary">📨 Send Test Email</button>
+                        <span id="test-email-status" style="margin-left: 15px;"></span>
+                    </div>
+                </div>
+                
+                <div id="email-not-configured" class="hidden">
+                    <div class="info-box warning">
+                        <h3>⚠️ Email Not Configured</h3>
+                        <p>To enable email alerts, add these environment variables to your <code>.env</code> file:</p>
+                    </div>
+                    
+                    <pre class="code-block"># SMTP Server Settings
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+
+# Email Addresses
+SMTP_FROM=Server Monitor &lt;your-email@gmail.com&gt;
+ALERT_EMAIL_TO=alerts@yourdomain.com</pre>
+
+                    <div class="info-box info" style="margin-top: 20px;">
+                        <h4>📝 Common SMTP Providers:</h4>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li><strong>Gmail:</strong> smtp.gmail.com:587 (use app password, not regular password)</li>
+                            <li><strong>Outlook/Office365:</strong> smtp.office365.com:587</li>
+                            <li><strong>SendGrid:</strong> smtp.sendgrid.net:587</li>
+                            <li><strong>Mailgun:</strong> smtp.mailgun.org:587</li>
+                        </ul>
+                        <p style="margin-top: 10px; font-size: 0.9em;">
+                            After updating your <code>.env</code> file, restart the container with:<br>
+                            <code style="background: #1e293b; padding: 5px 10px; border-radius: 4px; display: inline-block; margin-top: 5px;">docker compose restart server-monitor</code>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeEmailSettingsModal()">Close</button>
+            </div>
         </div>
     </div>
 

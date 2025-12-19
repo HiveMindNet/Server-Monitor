@@ -7,6 +7,7 @@ const { initializeAdmin, verifyUser, generateToken, authMiddleware } = require('
 const { getServers, addServer, updateServer, deleteServer } = require('./config/servers');
 const { monitorServer } = require('./services/awsMonitor');
 const { startBackgroundMonitoring, getLatestMetrics } = require('./services/backgroundMonitor');
+const { isEmailConfigured, sendTestEmail } = require('./services/emailService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -212,6 +213,50 @@ app.delete('/api/servers/:id', authMiddleware, (req, res) => {
   } catch (error) {
     console.error('Error deleting server:', error);
     res.status(500).json({ error: 'Failed to delete server' });
+  }
+});
+
+// ============ Email Routes ============
+
+// Get email configuration status
+app.get('/api/email/status', authMiddleware, (req, res) => {
+  try {
+    const configured = isEmailConfigured();
+    res.json({ 
+      configured,
+      config: configured ? {
+        smtpHost: process.env.SMTP_HOST,
+        smtpPort: process.env.SMTP_PORT || '587',
+        smtpUser: process.env.SMTP_USER,
+        alertTo: process.env.ALERT_EMAIL_TO,
+        alertFrom: process.env.SMTP_FROM || process.env.SMTP_USER
+      } : null
+    });
+  } catch (error) {
+    console.error('Error checking email status:', error);
+    res.status(500).json({ error: 'Failed to check email status' });
+  }
+});
+
+// Send test email
+app.post('/api/email/test', authMiddleware, async (req, res) => {
+  try {
+    if (!isEmailConfigured()) {
+      return res.status(400).json({ 
+        error: 'Email not configured. Please set SMTP_HOST, SMTP_USER, SMTP_PASS, and ALERT_EMAIL_TO in your environment variables.' 
+      });
+    }
+    
+    await sendTestEmail();
+    res.json({ 
+      success: true, 
+      message: 'Test email sent successfully! Check your inbox.' 
+    });
+  } catch (error) {
+    console.error('Error sending test email:', error);
+    res.status(500).json({ 
+      error: 'Failed to send test email: ' + error.message 
+    });
   }
 });
 

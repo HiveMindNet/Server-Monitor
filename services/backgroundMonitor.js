@@ -3,6 +3,7 @@ const path = require('path');
 const { getServers } = require('../config/servers');
 const { monitorServer } = require('./awsMonitor');
 const { monitorDockerContainers } = require('./dockerMonitor');
+const { checkAndSendAlerts } = require('./emailService');
 
 const CACHE_FILE = path.join(__dirname, '../data/metrics-cache.json');
 const MONITOR_INTERVAL = parseInt(process.env.MONITOR_INTERVAL || '30000'); // 30 seconds
@@ -69,6 +70,9 @@ async function runMonitoring() {
     
     // Save to disk
     saveCache();
+    
+    // Check for alerts and send email notifications
+    await checkAndSendAlerts(serverResults, containerResults);
     
     const duration = Date.now() - startTime;
     const serverIssues = serverResults.filter(s => s.status === 'error' || s.status === 'unreachable').length;
