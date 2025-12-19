@@ -108,7 +108,7 @@ docker run -d \
 | `SMTP_USER` | SMTP username | your-email@gmail.com |
 | `SMTP_PASS` | SMTP password/app password | your-app-password |
 | `SMTP_FROM` | From address | Server Monitor <alerts@example.com> |
-| `ALERT_EMAIL_TO` | Alert recipient email | admin@example.com |
+| `ALERT_EMAIL_TO` | Alert recipient(s) - comma-separated for multiple | admin@example.com,ops@example.com |
 
 #### Alert Thresholds
 
@@ -182,19 +182,23 @@ Server Monitor can automatically send email notifications when critical issues a
 
 ### Alert Levels
 
-Email alerts are sent for the following severity levels:
+Email alerts are sent **only** for the following severity levels:
 
 - **🚨 Down** - Server or container is offline/unreachable
 - **🔥 Critical** - Disk ≥90%, RAM ≥95%, or CPU 100% with RAM ≥90%
-- **⚠️ Warning** - RAM 90-94% or multiple metrics elevated
 
-**Note:** "Heavily Loaded" (high CPU only) does NOT trigger emails, as this is normal during backups.
+**Not sent via email:**
+- **⚠️ Warning** - Still visible in dashboard, but no email alert
+- **📊 Heavily Loaded** - High CPU only (normal during backups)
+
+This focuses alerts on truly urgent issues that require immediate attention.
 
 ### Features
 
 - **Smart Deduplication** - Won't spam you with duplicate alerts for the same issue within 1 hour
 - **Automatic Resolution** - Tracks when issues are resolved
 - **Beautiful HTML Emails** - Professional-looking emails with color-coded alerts
+- **Multiple Recipients** - Send alerts to multiple email addresses
 - **Actionable Information** - Includes specific metrics and recommended actions
 - **Test Button** - Send a test email to verify your configuration
 
@@ -213,6 +217,9 @@ SMTP_PASS=your-app-password
 # Email Addresses
 SMTP_FROM=Server Monitor <your-email@gmail.com>
 ALERT_EMAIL_TO=admin@example.com
+
+# Multiple recipients (comma-separated)
+# ALERT_EMAIL_TO=admin@example.com,ops@example.com,alerts@example.com
 ```
 
 2. **Restart the container:**

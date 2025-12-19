@@ -136,12 +136,14 @@
                 <div id="email-configured" class="hidden">
                     <div class="info-box success">
                         <h3>✅ Email Alerts Configured</h3>
-                        <p>Email notifications are active and will be sent for:</p>
+                        <p>Email notifications will be sent for urgent issues only:</p>
                         <ul style="margin: 10px 0; padding-left: 20px;">
-                            <li><strong>Down</strong> - Server or container offline</li>
-                            <li><strong>Critical</strong> - Disk ≥90%, RAM ≥95%, or severe issues</li>
-                            <li><strong>Warning</strong> - Multiple metrics elevated</li>
+                            <li><strong>🚨 Down</strong> - Server or container offline</li>
+                            <li><strong>🔥 Critical</strong> - Disk ≥90%, RAM ≥95%, or severe issues</li>
                         </ul>
+                        <p style="margin: 10px 0; font-size: 0.9em; color: #64748b;">
+                            <strong>Not sent:</strong> Warning and Heavily Loaded states (visible in dashboard only)
+                        </p>
                         <p style="margin-top: 15px; font-size: 0.9em; color: #64748b;">
                             <strong>Note:</strong> You won't receive duplicate alerts for the same issue within 1 hour.
                         </p>
@@ -190,7 +192,10 @@ SMTP_PASS=your-app-password
 
 # Email Addresses
 SMTP_FROM=Server Monitor &lt;your-email@gmail.com&gt;
-ALERT_EMAIL_TO=alerts@yourdomain.com</pre>
+ALERT_EMAIL_TO=alerts@yourdomain.com
+
+# Multiple recipients (comma-separated)
+# ALERT_EMAIL_TO=admin@example.com,ops@example.com,alerts@example.com</pre>
 
                     <div class="info-box info" style="margin-top: 20px;">
                         <h4>📝 Common SMTP Providers:</h4>

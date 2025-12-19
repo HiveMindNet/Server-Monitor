@@ -310,7 +310,8 @@ async function checkAndSendAlerts(servers, containers) {
         }
         
         if (severity) {
-            if (shouldSendAlert(serverId, severity)) {
+            // Only send email alerts for 'down' and 'critical', not 'warning'
+            if ((severity === 'down' || severity === 'critical') && shouldSendAlert(serverId, severity)) {
                 alerts.push({
                     type: 'server',
                     id: serverId,
@@ -369,7 +370,8 @@ async function checkAndSendAlerts(servers, containers) {
         }
         
         if (severity) {
-            if (shouldSendAlert(containerId, severity)) {
+            // Only send email alerts for 'down' and 'critical', not 'warning'
+            if ((severity === 'down' || severity === 'critical') && shouldSendAlert(containerId, severity)) {
                 alerts.push({
                     type: 'container',
                     id: containerId,
