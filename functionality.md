@@ -4,7 +4,7 @@
 Server Monitor is a comprehensive AWS EC2 monitoring application with authentication that tracks CPU, RAM, and disk usage across multiple servers with real-time alerts, background monitoring, and a public status page.
 
 ## Version
-Current version: 2.1.0
+Current version: 2.2.0
 
 ## Features and Functions
 
@@ -72,7 +72,7 @@ Current version: 2.1.0
 - **Token Expiration**: 24-hour token validity
 - **Secure Cookies**: HttpOnly cookies in production mode
 
-### 2. Server Management
+### 3. Server Management
 
 #### Server Configuration
 - **Server Storage**: Server configurations stored in data/servers.json
@@ -86,7 +86,7 @@ Current version: 2.1.0
 - **PUT /api/servers/:id**: Update server configuration (protected)
 - **DELETE /api/servers/:id**: Remove server (protected)
 
-### 3. AWS EC2 Monitoring
+### 4. AWS EC2 Monitoring
 
 #### CloudWatch Integration
 - **EC2 Instance Discovery**: Retrieve instance details via AWS SDK
@@ -111,7 +111,36 @@ Current version: 2.1.0
 - **Disk Space**: Total, used, and free space in human-readable format
 - **Timestamp**: ISO 8601 timestamp of measurement
 
-### 4. Dashboard UI Enhancements (Updated in v2.1.0)
+### 5. Docker Container Monitoring
+
+#### Container Discovery
+- **Automatic Detection**: Discovers all Docker containers on the host
+- **Docker Socket**: Connects to `/var/run/docker.sock` for container access
+- **State Tracking**: Monitors running, stopped, and exited containers
+- **Image Information**: Displays container images and versions
+
+#### Container Metrics (Updated in v2.2.0)
+- **CPU Usage**: Real-time CPU utilization percentage per container
+- **Memory Usage**: RAM utilization percentage and absolute usage
+- **Disk Usage**: Disk space utilization within container filesystem
+- **Visual Progress Bars**: Same UI treatment as server metrics (CPU, RAM, Disk)
+- **Disk Details**: Total, used, and free space in human-readable format
+
+#### Container Management
+- **Real-time Status**: Live container state (running, stopped, exited)
+- **Public Visibility**: Toggle containers on/off from public status page
+- **Display Names**: Custom names for public-facing status page
+- **Alert Integration**: Containers included in critical alert emails
+- **Background Monitoring**: Continuous monitoring alongside servers
+
+#### Container Stats Display
+- **Unified UI**: Container cards match server cards exactly
+- **Three Metrics**: CPU, RAM, and Disk with color-coded progress bars
+- **Alert Thresholds**: Same thresholds as servers (80% warning, 90-95% critical)
+- **Status Indicators**: Color-coded state badges
+- **Summary Stats**: Container counts included in dashboard header
+
+### 6. Dashboard UI Enhancements (Updated in v2.1.0)
 
 #### Server Management
 - **Delete Functionality**: 🗑️ delete button on each server card
@@ -119,7 +148,7 @@ Current version: 2.1.0
 - **Real-time Updates**: Servers removed immediately from display
 - **Cached Metrics**: Dashboard now uses pre-fetched background data for instant loading
 
-### 5. Frontend Dashboard
+### 7. Frontend Dashboard
 
 #### User Interface Components
 - **Login Screen**: Clean authentication interface
@@ -155,7 +184,7 @@ Current version: 2.1.0
 - **Disk Warning**: 80% (configurable)
 - **Disk Critical**: 90% (configurable)
 
-### 6. Server Monitoring Service
+### 8. Server Monitoring Service
 
 #### Connection Methods
 - **SSH Monitoring**: Direct SSH connection for detailed metrics
@@ -167,7 +196,7 @@ Current version: 2.1.0
 - **Timeout Management**: Proper SSH connection timeouts
 - **Status Reporting**: Clear error messages in UI
 
-### 7. Configuration
+### 9. Configuration
 
 #### Environment Variables
 - `PORT`: Server port (default: 3000)
@@ -184,7 +213,7 @@ Current version: 2.1.0
 - `RAM_THRESHOLD`: RAM warning threshold (default: 80)
 - `DISK_THRESHOLD`: Disk warning threshold (default: 90)
 
-### 8. API Endpoints
+### 10. API Endpoints
 
 #### Public Endpoints
 - **GET /health**: Health check endpoint
@@ -205,12 +234,13 @@ All `/api/*` endpoints except `/api/auth/login` and `/api/status/public` require
 - Consistent error message structure
 - HTTP status codes for different scenarios
 
-### 9. Data Persistence
+### 11. Data Persistence
 
 #### File-based Storage
 - **data/users.json**: User account information
 - **data/servers.json**: Server configurations and credentials
 - **data/metrics-cache.json**: Cached monitoring metrics (NEW in v2.1.0)
+- **data/alert-state.json**: Email alert tracking state (NEW in v2.2.0)
 
 #### Security Considerations
 - Passwords hashed with bcrypt (10 rounds)
@@ -218,7 +248,7 @@ All `/api/*` endpoints except `/api/auth/login` and `/api/status/public` require
 - Never expose private keys in API responses
 - Token-based authentication for all sensitive operations
 
-### 10. Docker Support
+### 12. Docker Support
 
 #### Dockerfile Features
 - **Base Image**: Node.js 18 Alpine (lightweight)
@@ -232,7 +262,7 @@ All `/api/*` endpoints except `/api/auth/login` and `/api/status/public` require
 - Consider volume mounting for data persistence
 - Environment variables for configuration
 
-### 11. CI/CD Pipeline
+### 13. CI/CD Pipeline
 
 #### GitHub Actions Workflow
 - **Trigger**: Automatic build on push to main branch

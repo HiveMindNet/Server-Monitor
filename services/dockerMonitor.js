@@ -42,24 +42,54 @@ async function getDockerContainers() {
   }
 }
 
-// Get container stats (CPU, Memory)
+// Get container stats (CPU, Memory, Disk)
 async function getContainerStats(containerId) {
   try {
-    const { stdout } = await execPromise(
+    // Get CPU and Memory stats
+    const { stdout: statsOutput } = await execPromise(
       `docker stats ${containerId} --no-stream --format "{{.CPUPerc}}|{{.MemPerc}}|{{.MemUsage}}"`
     );
 
-    if (!stdout.trim()) {
+    if (!statsOutput.trim()) {
       return null;
     }
 
-    const [cpu, mem, memUsage] = stdout.trim().split('|');
+    const [cpu, mem, memUsage] = statsOutput.trim().split('|');
     
-    return {
+    const stats = {
       cpu: parseFloat(cpu.replace('%', '')).toFixed(2),
       memory: parseFloat(mem.replace('%', '')).toFixed(2),
       memoryUsage: memUsage.trim()
     };
+
+    // Get disk usage for the container
+    try {
+      const { stdout: diskOutput } = await execPromise(
+        `docker exec ${containerId} df -h / 2>/dev/null | tail -n 1 | awk '{print $5 "|" $3 "|" $2 "|" $4}'`
+      );
+
+      if (diskOutput.trim()) {
+        const [diskPerc, diskUsed, diskTotal, diskFree] = diskOutput.trim().split('|');
+        stats.disk = parseFloat(diskPerc.replace('%', '')).toFixed(2);
+        stats.diskUsed = diskUsed.trim();
+        stats.diskTotal = diskTotal.trim();
+        stats.diskFree = diskFree.trim();
+      } else {
+        // Fallback if can't exec into container
+        stats.disk = 'N/A';
+        stats.diskUsed = 'N/A';
+        stats.diskTotal = 'N/A';
+        stats.diskFree = 'N/A';
+      }
+    } catch (diskError) {
+      // If we can't get disk stats, mark as N/A
+      stats.disk = 'N/A';
+      stats.diskUsed = 'N/A';
+      stats.diskTotal = 'N/A';
+      stats.diskFree = 'N/A';
+    }
+    
+    return stats;
   } catch (error) {
     console.error(`Error getting stats for container ${containerId}:`, error.message);
     return null;
@@ -129,6 +159,8 @@ module.exports = {
   monitorDockerContainers,
   getContainerEvents
 };
+
+
 
 
 

@@ -287,9 +287,14 @@ function renderContainers() {
         const statusClass = cont.state === 'running' ? 'running' : 
                           cont.state === 'exited' ? 'stopped' : 'error';
         
-        // Check for issues (high CPU or memory)
-        const hasIssue = cont.stats && (parseFloat(cont.stats.cpu) > 80 || parseFloat(cont.stats.memory) > 80);
-        const cardClass = cont.state !== 'running' ? 'error' : hasIssue ? 'warning' : '';
+        // Check for issues (high CPU, memory, or disk)
+        const cpu = cont.stats ? parseFloat(cont.stats.cpu) : 0;
+        const memory = cont.stats ? parseFloat(cont.stats.memory) : 0;
+        const disk = cont.stats && cont.stats.disk !== 'N/A' ? parseFloat(cont.stats.disk) : 0;
+        
+        const hasCritical = cpu >= 95 || memory >= 90 || disk >= 90;
+        const hasWarning = cpu >= 80 || memory >= 80 || disk >= 80;
+        const cardClass = cont.state !== 'running' ? 'error' : hasCritical ? 'error' : hasWarning ? 'warning' : '';
         
         return `
             <div class="server-card ${cardClass}">
@@ -311,11 +316,14 @@ function renderContainers() {
                 
                 ${cont.stats ? `
                     <div class="server-metrics">
-                        ${renderMetric('CPU Usage', cont.stats.cpu, '%', 80, 90)}
+                        ${renderMetric('CPU Usage', cont.stats.cpu, '%', 80, 95)}
                         ${renderMetric('Memory Usage', cont.stats.memory, '%', 80, 90)}
-                        <div style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 10px;">
-                            💾 ${cont.stats.memoryUsage}
-                        </div>
+                        ${renderMetric('Disk Usage', cont.stats.disk, '%', 80, 90)}
+                        ${cont.stats.diskTotal && cont.stats.diskTotal !== 'N/A' ? `
+                            <div style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 10px;">
+                                💾 ${cont.stats.diskUsed} used / ${cont.stats.diskTotal} total (${cont.stats.diskFree} free)
+                            </div>
+                        ` : ''}
                     </div>
                 ` : ''}
                 
